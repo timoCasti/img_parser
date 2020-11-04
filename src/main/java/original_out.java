@@ -1,7 +1,5 @@
-public class photoshop_out {
-
+public class original_out {
     private String id;
-    private String original;
     private String url;
     private String end;
     private String hash;
@@ -13,9 +11,8 @@ public class photoshop_out {
     private int width;
     private int height;
 
-    public photoshop_out(String id, String original, String url, String end, String hash, String filesize, String score, String author, String link, String timestamp, int width, int height) {
+    public original_out(String id, String url, String end, String hash, String filesize, String score, String author, String link, String timestamp, int width, int height) {
         this.id = id;
-        this.original = original;
         this.url = url;
         this.end = end;
         this.hash = hash;
@@ -28,21 +25,12 @@ public class photoshop_out {
         this.height = height;
     }
 
-
     public String getId() {
         return id;
     }
 
     public void setId(String id) {
         this.id = id;
-    }
-
-    public String getOriginal() {
-        return original;
-    }
-
-    public void setOriginal(String original) {
-        this.original = original;
     }
 
     public String getUrl() {
