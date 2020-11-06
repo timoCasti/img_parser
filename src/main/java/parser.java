@@ -1,7 +1,9 @@
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.dataformat.csv.CsvGenerator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvParser;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -53,7 +55,7 @@ public class parser {
 
             path = deleteEnding(commentOrSubmission) + ".tsv";
             List<photoshop_out> outList = new ArrayList<photoshop_out>();
-            List<String> unsupportedUrl=new ArrayList<>();
+            List<String> unsupportedUrl = new ArrayList<>();
 
             // Read json file to list
             ObjectMapper mapper = new ObjectMapper();
@@ -75,7 +77,7 @@ public class parser {
                     //top lvl comment, now find link of image in the body
                     String bo = c.getBody();
                     ArrayList<String> links = new ArrayList<>();
-                    String regex = "\\(?\\b(http://|www[.])[-A-Za-z0-9+&@#/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#/%=~_()|]";
+                    String regex = "\\(?\\b(http://|www[.])[-A-Za-z0-9+&@#/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#/%=~_()|]";//"^((https?|ftp|smtp):\\/\\/)?(www.)?[a-z0-9]+\\.[a-z]+(\\/[a-zA-Z0-9#]+\\/?)*$"; //regex from:https://stackoverflow.com/a/42619368 fails for some reason
                     Pattern p = Pattern.compile(regex);
                     Matcher m = p.matcher(bo);
                     while (m.find()) {
@@ -87,20 +89,19 @@ public class parser {
 
                     }
                     if (links.size() < 1) { // happens if comments are deleted
-                       // System.out.println("no url found for :  " + c.getId());
+                        // System.out.println("no url found for :  " + c.getId());
                         continue;
                     }
 
-                    //System.out.println(links.get(0));
-
+                    BufferedImage bimg = null;
                     int imgCounterLink = 0;
 
-                    boolean processedLink=false; //check if a link provides at least one image if not write to unsupported file
+                    boolean processedLink = false; //check if a link provides at least one image if not write to unsupported file
 
                     for (String link : links) {
 
 
-                        processedLink=false;
+                        processedLink = false;
                         //create permalink referring to the post
                         String linkBuilder = c.getPermalink();
                         if (linkBuilder == null) {
@@ -108,19 +109,26 @@ public class parser {
                         } else {
                             linkBuilder = "reddit.com/" + c.getPermalink();
 
-                            //  /r/photoshopbattles/comments/2nw093/
                         }
                         //check if link points directly to an img
-                        if (link.endsWith("png") || link.endsWith("jpg") || link.endsWith("jpeg")) {
+                        if (getFormat(link).contains("png") || getFormat(link).contains("jpg") || getFormat(link).contains("jpeg")) {
                             URL url = new URL(link);
-                            BufferedImage bimg = ImageIO.read(url);
+                            try {
+                                bimg = ImageIO.read(url);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
 
                             //it might be https instead of http
                             if (bimg == null) {
                                 String https = "https";
                                 String nUrl = "https" + link.substring(4);
                                 url = new URL(nUrl);
-                                bimg = ImageIO.read(url);
+                                try {
+                                    bimg = ImageIO.read(url);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
                                 imgCounterLink++;
                             }
                             if (bimg == null) {
@@ -137,12 +145,12 @@ public class parser {
                                 continue;
                             }
 
+
                             photoshop_out po = new photoshop_out(c.getId() + "_" + idSuffix, parent_id.substring(3), links.get(0), getFormat(link), sha256Hex(imgByte), String.valueOf(imgByte.length), c.getScore(), c.getAuthor(), linkBuilder, c.getCreated_utc(), bimg.getWidth(), bimg.getHeight());
                             outList.add(po);
-                            processedLink=true;
+                            processedLink = true;
 
                         } else { // url does not refer directly to and image (might be multiple images)
-                            // link = "http://imgur.com/gallery/GBEm11n";
 
                             driver.get(link);
                             Thread.sleep(2000); // easiest way to wait till any page is loaded
@@ -155,9 +163,8 @@ public class parser {
                             for (Element element : img) {
                                 String src = element.absUrl("src");
                                 if (src.toLowerCase().contains("i.imgur")) { //
-                                    if (src.endsWith("png") || src.endsWith("jpg") || src.endsWith("jpeg")) {
-                                        //byte[] image = getConnection(src).execute().bodyAsBytes();
-                                        //System.out.println(image.length + "   img length   " + src);
+                                    if (getFormat(src).contains("png") || getFormat(src).contains("jpg") || getFormat(src).contains("jpeg")) {
+
 
                                         //check for img duplicates, since images on e.g. imgur are present multiple times with different endings
                                         if (imgDuplicate.equals(deleteEnding(src))) {
@@ -166,7 +173,11 @@ public class parser {
 
                                         imgDuplicate = deleteEnding(src);
                                         URL url = new URL(src);
-                                        BufferedImage bimg = ImageIO.read(url);
+                                        try {
+                                            bimg = ImageIO.read(url);
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
 
                                         WritableRaster raster = bimg.getRaster();
                                         DataBufferByte data = (DataBufferByte) raster.getDataBuffer();
@@ -180,7 +191,7 @@ public class parser {
                                         //create photoshop out which is the content of the output file
                                         photoshop_out po = new photoshop_out(c.getId() + "_" + idSuffix, parent_id.substring(3), src, getFormat(src), sha256Hex(imgByte), String.valueOf(imgByte.length), c.getScore(), c.getAuthor(), linkBuilder, c.getCreated_utc(), bimg.getWidth(), bimg.getHeight());
                                         outList.add(po);
-                                        processedLink=true;
+                                        processedLink = true;
 
 
                                     }
@@ -190,7 +201,7 @@ public class parser {
 
 
                         }
-                        if(!processedLink){
+                        if (!processedLink) { //saves links which do not provide an image to an additional file
                             unsupportedUrl.add(link);
 
                         }
@@ -202,22 +213,178 @@ public class parser {
 
 
             }
-            driver.close();
+            driver.close(); //close headless browser
 
+            //write outputlist to .tsv file
             CsvMapper mapperCSV = new CsvMapper();
             mapperCSV.disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY);
+            final CsvSchema.Builder builder = CsvSchema.builder();
+            //builder.disableQuoteChar()
+            //mapperCSV.configure(CsvGenerator.Feature.ALWAYS)
             CsvSchema schema = mapperCSV.schemaFor(photoshop_out.class).withHeader();
-            schema = schema.withColumnSeparator('\t');
+            schema = schema.withColumnSeparator('\t').withoutQuoteChar();
             ObjectWriter myObjectWriter = mapperCSV.writer(schema);
             myObjectWriter.writeValue(Paths.get(path).toFile(), outList);
 
             //write file with unsupported urls
-            FileWriter writer= new FileWriter(deleteEnding(commentOrSubmission)+"_unsupported.txt");
-            for (String str: unsupportedUrl){
-                writer.write(str+System.lineSeparator());
+            FileWriter writer = new FileWriter(deleteEnding(commentOrSubmission) + "_unsupported.txt");
+            for (String str : unsupportedUrl) {
+                writer.write(str + System.lineSeparator());
             }
             writer.close();
 
+        } else if (commentOrSubmission.contains("RS")) {
+            //submissions file
+
+            path = deleteEnding(commentOrSubmission) + ".tsv";
+            List<original_out> outList = new ArrayList<original_out>();
+            List<String> unsupportedUrl = new ArrayList<>();
+
+            // Read json file to list
+            ObjectMapper mapper = new ObjectMapper();
+            submission[] submissionList = mapper.readValue(f, submission[].class);
+
+            int emptyURL = 0;
+
+            BufferedImage bimg = null;
+            for (submission sub : submissionList) {
+                s = sub;
+                boolean processedSubmission = false;
+
+                //create permalink referring to the post
+                String linkBuilder = s.getPermalink();
+                if (linkBuilder == null) {
+                    linkBuilder = "reddit.com/r/photoshopbattles/comments/" + s.getId();
+                } else {
+                    linkBuilder = "reddit.com/" + s.getPermalink();
+
+                    //  /r/photoshopbattles/comments/2nw093/
+                }
+
+                //most of times submissions have img link in url
+                String sUrl = s.getUrl();
+                // System.out.println(sUrl);
+                int sc = Integer.parseInt(s.getScore());
+
+                if (sc < 20) {  //score of post needs to be at least 20, to filter spam
+                    continue;
+                }
+                String ending = getFormat(sUrl);
+                boolean isImg = ending.contains("png") || ending.contains("jpg") || ending.contains("jpeg");
+                if (isImg) {
+                    URL url = new URL(sUrl);
+                    try {
+                        bimg = ImageIO.read(url);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    //it might be https instead of http
+                    if (bimg == null && sUrl.startsWith("http:")) {
+                        String https = "https";
+                        String nUrl = "https" + sUrl.substring(4);
+                        url = new URL(nUrl);
+                        bimg = ImageIO.read(url);
+
+                    }
+                    if (bimg == null) {
+                        System.out.println("fail");
+                        continue;
+                    }
+
+                    WritableRaster raster = bimg.getRaster();
+                    DataBufferByte data = (DataBufferByte) raster.getDataBuffer();
+                    byte[] imgByte = data.getData();
+
+                    if (imgByte.length < 10000) {  //check for min size of 10kB for and image
+                        continue;
+                    }
+
+
+                    original_out po = new original_out(s.getId(), s.getUrl(), getFormat(sUrl), sha256Hex(imgByte), String.valueOf(imgByte.length), s.getScore(), s.getAuthor(), linkBuilder, s.getCreated_utc(), bimg.getWidth(), bimg.getHeight());
+                    outList.add(po);
+                    processedSubmission = true;
+
+
+                } //url does not directly refer to an image checkout provided url for images with headless Brower
+                else if (!sUrl.equals("")) {
+
+                    driver.get(sUrl);
+                    Thread.sleep(2000); // easiest way to wait till any page is loaded
+
+                    doc = Jsoup.parse(driver.getPageSource());
+
+                    Elements img = doc.getElementsByTag("img");
+                    String imgDuplicate = "";
+                    //System.out.println(img.size()+ "  number of img elements found");
+                    for (Element element : img) {
+                        String src = element.absUrl("src");
+                        if (src.toLowerCase().contains("i.imgur")) { //
+
+                            if (getFormat(src).contains("png") || getFormat(src).contains("jpg") || getFormat(src).contains("jpeg")) {
+                                //byte[] image = getConnection(src).execute().bodyAsBytes();
+                                //System.out.println(image.length + "   img length   " + src);
+
+                                //check for img duplicates, since images on e.g. imgur are present multiple times with different endings
+                                if (imgDuplicate.equals(deleteEnding(src))) {
+                                    continue;
+                                }
+
+                                imgDuplicate = deleteEnding(src);
+                                URL url = new URL(src);
+                                try {
+                                    bimg = ImageIO.read(url);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+
+                                WritableRaster raster = bimg.getRaster();
+                                DataBufferByte data = (DataBufferByte) raster.getDataBuffer();
+                                byte[] imgByte = data.getData();
+
+                                if (imgByte.length < 10000) { //check for min size of 10kB for and image
+                                    continue;
+                                }
+
+                                //create photoshop out which is the content of the output file
+                                original_out po = new original_out(s.getId(), src, getFormat(src), sha256Hex(imgByte), String.valueOf(imgByte.length), s.getScore(), s.getAuthor(), linkBuilder, s.getCreated_utc(), bimg.getWidth(), bimg.getHeight());
+                                outList.add(po);
+                                processedSubmission = true;
+                            }
+                        }
+                    }
+
+
+                } else {//url was is empty
+                    emptyURL++;
+                }
+                if (!processedSubmission) {
+                    unsupportedUrl.add(sUrl);
+                }
+
+            }
+            unsupportedUrl.add("Number of empty url:  " + String.valueOf(emptyURL));
+            driver.close(); //close headless browser
+
+            //write outputlist to .tsv file
+
+            CsvMapper mapperCSV = new CsvMapper();
+            mapperCSV.disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY);
+            CsvSchema schema = mapperCSV.schemaFor(photoshop_out.class).withHeader();
+            schema = schema.withColumnSeparator('\t').withoutQuoteChar();
+            ObjectWriter myObjectWriter = mapperCSV.writer(schema);
+            myObjectWriter.writeValue(Paths.get(path).toFile(), outList);
+
+            //write file with unsupported urls
+            FileWriter writer = new FileWriter(deleteEnding(commentOrSubmission) + "_unsupported.txt");
+            for (String str : unsupportedUrl) {
+                writer.write(str + System.lineSeparator());
+            }
+            writer.close();
+
+
+        } else {
+            System.out.println("File name is not supported");
         }
 
 
@@ -238,6 +405,7 @@ public class parser {
         return withEnding.substring(0, cutSize - 1);
 
     }
+
 
 }
 
