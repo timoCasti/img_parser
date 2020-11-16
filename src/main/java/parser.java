@@ -34,11 +34,13 @@ public class parser {
     public static void main(String[] args) throws Exception, IOException {
 
         System.setProperty("webdriver.gecko.driver", "C:\\Users\\timoc\\Desktop\\project_data\\geckodriver.exe");
-        FirefoxOptions options=new FirefoxOptions();
+        FirefoxOptions options = new FirefoxOptions();
         options.setHeadless(true);
         WebDriver driver = new FirefoxDriver(options);
+        WebDriver driver1=new FirefoxDriver(options);
 
         Document doc;
+        Document doc1;
         comment c;
         submission s;
         File f = new File(args[0]);
@@ -73,7 +75,7 @@ public class parser {
                     //top lvl comment, now find link of image in the body
                     String bo = c.getBody();
                     ArrayList<String> links = new ArrayList<>();
-                    String regex ="\\(?\\b(http://|www[.])[-A-Za-z0-9+&@#/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#/%=~_()|]";//"^((https?|ftp|smtp):\\/\\/)?(www.)?[a-z0-9]+\\.[a-z]+(\\/[a-zA-Z0-9#]+\\/?)*$"; //regex from:https://stackoverflow.com/a/42619368 fails for some reason
+                    String regex = "\\(?\\b(http://|www[.])[-A-Za-z0-9+&@#/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#/%=~_()|]";//"^((https?|ftp|smtp):\\/\\/)?(www.)?[a-z0-9]+\\.[a-z]+(\\/[a-zA-Z0-9#]+\\/?)*$"; //regex from:https://stackoverflow.com/a/42619368 fails for some reason
                     Pattern p = Pattern.compile(regex);
                     Matcher m = p.matcher(bo);
                     while (m.find()) {
@@ -81,44 +83,89 @@ public class parser {
                         if (urlStr.startsWith("(") && urlStr.endsWith(")")) {
                             urlStr = urlStr.substring(1, urlStr.length() - 1);
                         }
-                        if (urlStr.startsWith("(")){
-                            System.out.println("link starts with (    "+ urlStr);
-                            urlStr=urlStr.substring(1);
+                        if (urlStr.startsWith("(")) {
+                            System.out.println("link starts with (    " + urlStr);
+                            urlStr = urlStr.substring(1);
                         }
-                        if(urlStr.endsWith(")")){
-                            urlStr=urlStr.substring(0,urlStr.length()-1);
+                        if (urlStr.endsWith(")")) {
+                            urlStr = urlStr.substring(0, urlStr.length() - 1);
                         }
 
                         links.add(urlStr);
 
                     }
-                    if (links.size() < 1) { // happens if comments are deleted
-                        // System.out.println("no url found for :  " + c.getId());
-                        continue;
-                    }
 
-                    BufferedImage bimg = null;
-                    int imgCounterLink = 0;
+                    if (links.size() == 1) { // we only consider comments with only one link
 
-                    boolean processedLink = false; //check if a link provides at least one image if not write to unsupported file
 
-                    for (String link : links) {
+                        BufferedImage bimg = null;
+                        int imgCounterLink = 0;
 
-                        processedLink = false;
-                        //create permalink referring to the post
-                        String linkBuilder = c.getPermalink();
-                        if (linkBuilder == null) {
-                            linkBuilder = "reddit.com/r/photoshopbattles/comments/" + c.getParent_id().substring(3);
-                        } else {
-                            linkBuilder = "reddit.com/" + c.getPermalink();
 
+
+                        boolean processedLink = false; //check if a link provides at least one image if not write to unsupported file
+
+
+                        String link = links.get(0);
+                        String linkBuilder = "reddit.com/r/photoshopbattles/comments/" + c.getParent_id().substring(3)+"/a/"+c.getId();
+
+                        /*
+                        try {
+                            driver1.get(linkBuilder);
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
+
+                        Thread.sleep(1500); // easiest way to wait till any page is loaded
+
+                        doc1 = Jsoup.parse(driver.getPageSource());
+
+                        String title=doc1.title();
+
+                        //trim img url remove everything after question mark
+                        int index=title.indexOf(':');
+                        if(index!=-1) {
+                            title = title.substring(index+1);
+                        }
+                        index=title.indexOf(':');
+                        if(index!=-1) {
+                            title = title.substring(0,index);
+                        }
+                        if(title!=null&&title.length()>0) {
+                            while (title.startsWith(" ")) {
+                                title = title.substring(1);
+                            }
+                            while (title.endsWith(" ")) {
+                                title = title.substring(0, title.length() - 2);
+                            }
+                        }
+                        title=title.replaceAll(" ","_").toLowerCase();
+
+                        linkBuilder=linkBuilder+"/"+title+"/"+c.getId();
+
+
+                         */
+
+
+
+
+
+
+
+
+
+                      //  processedLink = false;
+                        //create permalink referring to the post
+                      //  String linkBuilder = "reddit.com/r/photoshopbattles/comments/" + c.getParent_id().substring(3);
+
+
+/*
                         //check if link points directly to an img
                         if (getFormat(link).contains("png") || getFormat(link).contains("jpg") || getFormat(link).contains("jpeg")) {
-                            URL url=null;
+                            URL url = null;
                             try {
                                 url = new URL(link);
-                            }catch (Exception e){
+                            } catch (Exception e) {
                                 System.out.println(link);
                                 e.printStackTrace();
                             }
@@ -135,7 +182,7 @@ public class parser {
                                 String nUrl = "https" + link.substring(4);
                                 try {
                                     url = new URL(nUrl);
-                                }catch (Exception e){
+                                } catch (Exception e) {
                                     e.printStackTrace();
                                 }
 
@@ -166,23 +213,31 @@ public class parser {
                             processedLink = true;
 
                         } else { // url does not refer directly to and image (might be multiple images)
-
+*/
                             try {
                                 driver.get(link);
-                            }catch (Exception e){
+                            } catch (Exception e) {
                                 e.printStackTrace();
                             }
 
-                            Thread.sleep(2000); // easiest way to wait till any page is loaded
+                            Thread.sleep(1500); // easiest way to wait till any page is loaded
 
                             doc = Jsoup.parse(driver.getPageSource());
 
-                            Elements img = doc.getElementsByTag("img");
+
+
+
+
+
+                        Elements img = doc.getElementsByTag("img");
                             String imgDuplicate = "";
                             //System.out.println(img.size()+ "  number of img elements found");
                             for (Element element : img) {
                                 String src = element.absUrl("src");
-                                if (src.toLowerCase().contains("i.imgur")) { //
+                                if (src.toLowerCase().contains("i.imgur")||src.toLowerCase().contains("pinimg.com")||src.toLowerCase().contains("pbs.twigmg.com")||src.toLowerCase().contains("upload.wikimedia.org")||src.toLowerCase().contains("ytimg.com")||src.toLowerCase().contains("i.reddituploads.com")||src.toLowerCase().contains("puu.sh")||src.toLowerCase().contains("flickr.com")||src.toLowerCase().contains("deviantart.com")||src.toLowerCase().contains("en.wikipedia.org")||src.toLowerCase().contains("i.redd.it")) { //
+
+
+                                //might be limiting
                                     if (getFormat(src).contains("png") || getFormat(src).contains("jpg") || getFormat(src).contains("jpeg")) {
 
 
@@ -193,16 +248,19 @@ public class parser {
 
                                         imgDuplicate = deleteEnding(src);
 
-                                        URL url=null;
+                                        URL url = null;
                                         try {
                                             url = new URL(src);
-                                        }catch (Exception e){
+                                        } catch (Exception e) {
                                             e.printStackTrace();
                                         }
                                         try {
                                             bimg = ImageIO.read(url);
                                         } catch (IOException e) {
                                             e.printStackTrace();
+                                        }
+                                        if(bimg==null){
+                                            continue;
                                         }
 
                                         WritableRaster raster = bimg.getRaster();
@@ -214,8 +272,13 @@ public class parser {
                                             continue;
                                         }
 
+                                        //trim img url remove everything after question mark
+                                        int index=src.indexOf('?');
+                                        if(index!=-1) {
+                                            src = src.substring(0, index);
+                                        }
                                         //create photoshop out which is the content of the output file
-                                        photoshop_out po = new photoshop_out(c.getId() + "_" + idSuffix, parent_id.substring(3), src, getFormat(src), sha256Hex(imgByte), String.valueOf(imgByte.length), c.getScore(), c.getAuthor(), linkBuilder, c.getCreated_utc(), bimg.getWidth(), bimg.getHeight());
+                                        photoshop_out po = new photoshop_out(c.getId() /*+ "_" + idSuffix*/, parent_id.substring(3), src, getFormat(src), sha256Hex(imgByte), String.valueOf(imgByte.length), c.getScore(), c.getAuthor(), linkBuilder, c.getCreated_utc(), bimg.getWidth(), bimg.getHeight());
                                         outList.add(po);
                                         processedLink = true;
 
@@ -226,15 +289,13 @@ public class parser {
                             }
 
 
-                        }
+                        //}
                         if (!processedLink) { //saves links which do not provide an image to an additional file
                             unsupportedUrl.add(link);
 
                         }
 
                     }
-
-
                 }
 
 
@@ -279,13 +340,8 @@ public class parser {
 
                 //create permalink referring to the post
                 String linkBuilder = s.getPermalink();
-                if (linkBuilder == null) {
-                    linkBuilder = "reddit.com/r/photoshopbattles/comments/" + s.getId();
-                } else {
-                    linkBuilder = "reddit.com/" + s.getPermalink();
+                linkBuilder = "reddit.com/r/photoshopbattles/comments/" + s.getId();
 
-                    //  /r/photoshopbattles/comments/2nw093/
-                }
 
                 //most of times submissions have img link in url
                 String sUrl = s.getUrl();
@@ -296,13 +352,15 @@ public class parser {
                     continue;
                 }
                 String ending = getFormat(sUrl);
+
+
                 boolean isImg = ending.contains("png") || ending.contains("jpg") || ending.contains("jpeg");
                 if (isImg) {
 
-                    URL url=null;
+                    URL url = null;
                     try {
                         url = new URL(sUrl);
-                    }catch (Exception e){
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                     try {
@@ -313,17 +371,16 @@ public class parser {
 
                     //it might be https instead of http
                     if (bimg == null && sUrl.startsWith("http:")) {
-                        String https = "https";
                         String nUrl = "https" + sUrl.substring(4);
                         try {
                             url = new URL(nUrl);
-                        }catch (Exception e){
+                        } catch (Exception e) {
                             e.printStackTrace();
                         }
                         try {
                             bimg = ImageIO.read(url);
 
-                        }catch (IOException e){
+                        } catch (IOException e) {
                             e.printStackTrace();
                         }
 
@@ -340,6 +397,9 @@ public class parser {
                     if (imgByte.length < 10000) {  //check for min size of 10kB for and image
                         continue;
                     }
+                    if(bimg.getHeight()<300||bimg.getWidth()<300){
+                        continue;
+                    }
 
 
                     original_out po = new original_out(s.getId(), s.getUrl(), getFormat(sUrl), sha256Hex(imgByte), String.valueOf(imgByte.length), s.getScore(), s.getAuthor(), linkBuilder, s.getCreated_utc(), bimg.getWidth(), bimg.getHeight());
@@ -347,12 +407,12 @@ public class parser {
                     processedSubmission = true;
 
 
-                } //url does not directly refer to an image checkout provided url for images with headless Brower
+                } //url does not directly refer to an image checkout provided url for images with headless Browser
                 else if (!sUrl.equals("")) {
 
                     try {
                         driver.get(sUrl);
-                    }catch (Exception e){
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                     Thread.sleep(2000); // easiest way to wait till any page is loaded
@@ -364,7 +424,7 @@ public class parser {
                     //System.out.println(img.size()+ "  number of img elements found");
                     for (Element element : img) {
                         String src = element.absUrl("src");
-                        if (src.toLowerCase().contains("i.imgur")) { //
+                       // if (src.toLowerCase().contains("i.imgur")) { //
 
                             if (getFormat(src).contains("png") || getFormat(src).contains("jpg") || getFormat(src).contains("jpeg")) {
                                 //byte[] image = getConnection(src).execute().bodyAsBytes();
@@ -376,10 +436,10 @@ public class parser {
                                 }
 
                                 imgDuplicate = deleteEnding(src);
-                                URL url=null;
+                                URL url = null;
                                 try {
                                     url = new URL(src);
-                                }catch (Exception e){
+                                } catch (Exception e) {
                                     e.printStackTrace();
                                 }
                                 try {
@@ -395,19 +455,27 @@ public class parser {
                                 if (imgByte.length < 10000) { //check for min size of 10kB for and image
                                     continue;
                                 }
+                                if(bimg.getHeight()<300||bimg.getWidth()<300){
+                                    continue;
+                                }
+
+                                //trim img url remove everything after question mark
+                                int index=src.indexOf('?');
+                                if(index!=-1) {
+                                    src = src.substring(0, index);
+                                }
 
                                 //create photoshop out which is the content of the output file
                                 original_out po = new original_out(s.getId(), src, getFormat(src), sha256Hex(imgByte), String.valueOf(imgByte.length), s.getScore(), s.getAuthor(), linkBuilder, s.getCreated_utc(), bimg.getWidth(), bimg.getHeight());
                                 outList.add(po);
                                 processedSubmission = true;
                             }
-                        }
-                        else if (src.toLowerCase().contains("i.reddituploads")){ //special case handling
+                   /*   } else if (src.toLowerCase().contains("i.reddituploads")) { //special case handling
 
-                            URL url=null;
+                            URL url = null;
                             try {
                                 url = new URL(sUrl);
-                            }catch (Exception e){
+                            } catch (Exception e) {
                                 e.printStackTrace();
                             }
                             try {
@@ -422,13 +490,13 @@ public class parser {
                                 String nUrl = "https" + sUrl.substring(4);
                                 try {
                                     url = new URL(nUrl);
-                                }catch (Exception e){
+                                } catch (Exception e) {
                                     e.printStackTrace();
                                 }
                                 try {
                                     bimg = ImageIO.read(url);
 
-                                }catch (IOException e){
+                                } catch (IOException e) {
                                     e.printStackTrace();
                                 }
 
@@ -450,7 +518,7 @@ public class parser {
                             outList.add(po);
                             processedSubmission = true;
 
-                        }
+                        } */
                     }
 
 
