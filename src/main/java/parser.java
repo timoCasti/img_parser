@@ -191,7 +191,7 @@ public class parser {
 
                 if (links.size() == 1) { // we only consider comments with only one link
 
-                    BufferedImage bimg;
+                    BufferedImage bimg = null;
                     int imgCounterLink = 0;
 
                     boolean processedLink = false; //check if a link provides at least one image if not write to unsupported file
@@ -234,7 +234,13 @@ public class parser {
                             if (url == null) {
                                 continue;
                             }
-                            bimg = ImageIO.read(url);
+                            //!!!!!!!!!!!!!!   try !!!!!!!!!!!!!
+                            try {
+                                bimg = ImageIO.read(url);
+                            }catch (Exception e){
+                                e.printStackTrace();
+                            }
+                           
                             if (bimg == null) {
                                 continue;
                             }
